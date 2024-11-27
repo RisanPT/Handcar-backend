@@ -1,8 +1,13 @@
 import json
 from random import random
+
 from django.conf import settings
+from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.hashers import make_password
+from django.contrib.auth.models import User
+from django.core.cache import cache
+from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.db import IntegrityError
 from django.shortcuts import render, redirect, get_object_or_404
@@ -29,11 +34,15 @@ from .serializers import AddressSerializer
 def signup(request):
     if request.method == 'POST':
         # Get user details from the POST request
+
         name = request.POST.get('name')
         email = request.POST.get('email')
         phone = request.POST.get('phone')
         password = request.POST.get('password')
+        
 
+        print("Request POST data:", request.POST)
+        print("Request content type:", request.content_type)
         # Check if all fields are provided
         if not all([name, email, phone, password]):
             return JsonResponse({'error': 'All fields are required'}, status=400)
@@ -120,6 +129,7 @@ def verify_otp(phone, entered_otp):
     return False
 
 # View for logging in with a password
+
 @csrf_exempt
 def login_with_password(request):
     if request.method == 'POST':
@@ -141,7 +151,7 @@ def login_with_password(request):
 
 
 
-# View for logging in with OTP  NOT WORKING- SHOWING INVALID OTP ERROR
+# View for logging in with OTP  NOT WORKING-SHOWING INVALID OTP ERROR
 @csrf_exempt
 def login_with_otp(request):
     if request.method == 'POST':
@@ -202,11 +212,11 @@ def view_products(request):
 
 
 @csrf_exempt
-@login_required
+# @login_required
 def add_to_cart(request, product_id):
     if request.method == 'POST':
         product = get_object_or_404(Product, id=product_id)
-        cart_item, created = CartItem.objects.get_or_create(user=request.user, product=product)
+        cart_item, created = CartItem.objects.get_or_create( product=product)
 
         if not created:
             # If the item is already in the cart, increase the quantity
@@ -373,9 +383,10 @@ def subscribe(request):
 
 @csrf_exempt
 def display_cart(request):
-    if request.user.is_authenticated:
+    # if request.user.is_authenticated:
         # Get all cart items for the logged-in user
-        cart_items = CartItem.objects.filter(user=request.user)
+        # cart_items = CartItem.objects.filter(user=request.user)
+        cart_items = CartItem.objects.all()
 
         # Prepare cart items data for JSON response
         cart_data = []
@@ -385,18 +396,19 @@ def display_cart(request):
                 'product_price': item.product.price,
                 'quantity': item.quantity,
                 'total_price': item.product.price * item.quantity,
+                
             })
 
         # Calculate total price for the cart
-        total_price = sum(item['total_price'] for item in cart_data)
+        # total_price = sum(item['total_price'] for item in cart_data)
 
         # Return JSON response with cart items and total price
         return JsonResponse({
             'cart_items': cart_data,
-            'total_price': total_price
+            
         })
 
-    return JsonResponse({'error': 'User not authenticated'}, status=401)
+    # return JsonResponse({'error': 'User not authenticated'}, status=401)
 
 
 def remove_cart_item(request, item_id):
